@@ -34,6 +34,16 @@ class PropertyClient(object):
             on_message=lambda ws, msg: self.on_message(ws, msg),
             on_error=lambda ws, msg: self.on_error(ws, msg),
             on_close=lambda ws: self.on_close(ws))
+        # Start run_forever() asynchronously to be non-blocking.
+        thread = threading.Thread(target=self.ws.run_forever)
+        thread.daemon = True
+        thread.start()
+
+    def wait_until_connected(self, timeout=5):
+        # Stupid but YOLO
+        while not self.ws.sock.connected and timeout:
+            time.sleep(1)
+            timeout -= 1
 
     def on_message(self, ws, message):
         payload = json.loads(message)
@@ -71,15 +81,7 @@ if __name__ == '__main__':
 
     # ID 0 would auto-assign a new number, we use 666 ;)
     prop = PropertyClient(prop_id=666)
-
-    thread = threading.Thread(target=prop.ws.run_forever)
-    thread.daemon = True
-    thread.start()
-
-    timeout = 5
-    while not prop.ws.sock.connected and timeout:
-        time.sleep(1)
-        timeout -= 1
+    prop.wait_until_connected(timeout=10)
 
     while prop.ws.sock.connected:
         for i in range(3):
