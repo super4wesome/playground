@@ -25,11 +25,11 @@ SET_VALUE = {
 
 
 class PropertyClient(object):
-    def __init__(self, prop_id=0):
+    def __init__(self, url, prop_id=0):
         self.prop_id = prop_id
         self.data = {}
         self.ws = websocket.WebSocketApp(
-            URL,
+            url,
             on_open=lambda ws: self.on_open(ws),
             on_message=lambda ws, msg: self.on_message(ws, msg),
             on_error=lambda ws, msg: self.on_error(ws, msg),
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     websocket.enableTrace(True)
 
     # ID 0 would auto-assign a new number, we use 666 ;)
-    prop = PropertyClient(prop_id=666)
+    prop = PropertyClient(URL, prop_id=666)
     prop.wait_until_connected(timeout=10)
 
     while prop.ws.sock.connected:
