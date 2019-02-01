@@ -1,10 +1,7 @@
 from __future__ import print_function
 
-try:
-    import thread
-except ImportError:
-    import _thread as thread
 import json
+import threading
 import time
 import pprint
 
@@ -20,12 +17,17 @@ CONNECTION_REQUEST = {
     "prop_id": 0
 }
 
+SET_VALUE = {
+    "type": "set_value",
+    "value_name": "ambient_temperature",
+    "value": 10.0
+}
+
 
 class PropertyClient(object):
     def __init__(self, prop_id=0):
         self.prop_id = prop_id
         self.data = {}
-        websocket.enableTrace(True)
         self.ws = websocket.WebSocketApp(
             URL,
             on_open=lambda ws: self.on_open(ws),
@@ -50,13 +52,36 @@ class PropertyClient(object):
 
     def on_open(self, ws):
         def run(*args):
-            connection_request = CONNECTION_REQUEST
-            connection_request["prop_id"] = self.prop_id
-            self.ws.send(json.dumps(CONNECTION_REQUEST))
+            request = CONNECTION_REQUEST
+            request["prop_id"] = self.prop_id
+            self.ws.send(json.dumps(request))
 
-        thread.start_new_thread(run, ())
+        thread = threading.Thread(target=run)
+        thread.start()
+
+    def set_value(self, value_name, value):
+        request = SET_VALUE
+        request["value_name"] = value_name
+        request["value"] = value
+        self.ws.send(json.dumps(request))
 
 
 if __name__ == '__main__':
-    prop = PropertyClient(prop_id=0)
-    prop.ws.run_forever()
+    websocket.enableTrace(True)
+
+    # ID 0 would auto-assign a new number, we use 666 ;)
+    prop = PropertyClient(prop_id=666)
+
+    thread = threading.Thread(target=prop.ws.run_forever)
+    thread.daemon = True
+    thread.start()
+
+    timeout = 5
+    while not prop.ws.sock.connected and timeout:
+        time.sleep(1)
+        timeout -= 1
+
+    while prop.ws.sock.connected:
+        for i in range(3):
+            prop.set_value("wind_speed", 10 * i)
+            time.sleep(5)
